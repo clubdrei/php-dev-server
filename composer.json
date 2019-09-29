@@ -1,0 +1,31 @@
+{
+    "name": "clubdrei/php-dev-server",
+    "description": "Wrapper around symfony/cli for easier install with composer",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "clubdrei.com Medienagentur OG",
+            "email": "office@clubdrei.com"
+        }
+    ],
+    "bin": [
+        "bin/php-dev-server"
+    ],
+    "require": {
+        "php": ">=5.6"
+    },
+    "require-dev": {
+    },
+    "autoload": {
+        "psr-4": {
+            "C3\\PhpDevServer\\": "src/"
+        }
+    },
+    "extra": {
+        "clubdrei/php-dev-server": {
+            "port": "32400",
+            "webDirectory": "public"
+        }
+    }
+}

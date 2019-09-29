@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+
+use C3\PhpDevServer\ConfigManager;
+use C3\PhpDevServer\WebserverInstaller;
+
+set_time_limit(0);
+
+$autoloaderPath = determineComposerAutoloadPath();
+require $autoloaderPath;
+
+$composerJsonPath = dirname(dirname($autoloaderPath)) . '/composer.json';
+$composerJson = file_get_contents($composerJsonPath);
+
+if (!WebserverInstaller::isInstalled()) {
+    WebserverInstaller::install();
+}
+
+$configManager = new ConfigManager($composerJson);
+
+$workingDirectory = dirname($composerJsonPath);
+$symfonyBinary = '"${HOME}/.symfony/bin/symfony"';
+$symfonyParams = [
+    'server:start',
+    '--port=' . $configManager->getPort(),
+    '--dir=' . $configManager->getWebDirectory(),
+    '--no-tls',
+];
+
+passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . $symfonyBinary . ' ' . implode(' ', $symfonyParams));
+
+/**
+ * @return SplFileInfo
+ * @throws RuntimeException
+ */
+function determineComposerAutoloadPath()
+{
+    $dir = __DIR__;
+    while (!empty($dir) && $dir !== '/') {
+        if (is_readable($dir . '/autoload.php')) {
+            return new SplFileInfo($dir . '/autoload.php');
+        }
+        if (is_readable($dir . '/vendor/autoload.php')) {
+            return new SplFileInfo($dir . '/vendor/autoload.php');
+        }
+        $dir = dirname($dir);
+    }
+
+    throw new RuntimeException('autoload.php not found');
+}
