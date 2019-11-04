@@ -53,7 +53,7 @@ if (null !== $configManager->getP12File()) {
     if (!file_exists($currentP12File) || md5_file($file->getRealPath()) !== md5_file($currentP12File)) {
         // Replace original symfony/cli default.p12
         echo 'Copy ' . $file->getRealPath() . ' to ' . $currentP12File;
-        passthru('rsync -aq ' . escapeshellarg($file->getRealPath()) . ' ' . escapeshellarg($currentP12File));
+        copy($file->getRealPath(), $currentP12File);
     }
 }
 
