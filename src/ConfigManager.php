@@ -13,8 +13,10 @@ class ConfigManager
      * @var array
      */
     protected $config = [
-        'port' => 15200,
+        'port' => 55555,
         'webDirectory' => 'public',
+        'tlsEnabled' => false,
+        'p12File' => null,
     ];
 
     public function __construct($composerJson)
@@ -25,13 +27,35 @@ class ConfigManager
         }
     }
 
+    /**
+     * @return int
+     */
     public function getPort()
     {
-        return $this->config['port'];
+        return (int)$this->config['port'];
     }
 
+    /**
+     * @return string
+     */
     public function getWebDirectory()
     {
-        return $this->config['webDirectory'];
+        return (string)$this->config['webDirectory'];
+    }
+
+    /**
+     * @return bool
+     */
+    public function isTlsEnabled()
+    {
+        return (bool)$this->config['tlsEnabled'];
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getP12File()
+    {
+        return $this->config['p12File'];
     }
 }

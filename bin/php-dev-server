@@ -24,8 +24,27 @@ $symfonyParams = [
     'server:start',
     '--port=' . $configManager->getPort(),
     '--dir=' . $configManager->getWebDirectory(),
-    '--no-tls',
 ];
+
+if (!$configManager->isTlsEnabled()) {
+    $symfonyParams[] = '--no-tls';
+}
+
+if (null !== $configManager->getP12File()) {
+    // Handle custom p12 file
+    if (0 === strpos($configManager->getP12File(), '/')) {
+        $file = new SplFileInfo($configManager->getP12File());
+    } else {
+        $file = new SplFileInfo($workingDirectory) . '/' . $configManager->getP12File();
+    }
+
+    if (!$file->isReadable()) {
+        die('Could not read P12 file: ' . $file->getPath());
+    }
+
+    // Replace original symfony/cli default.p12
+    passthru('rsync -av ' . escapeshellarg($file->getRealPath()) . ' "${HOME}/.symfony/certs/default.p12"');
+}
 
 passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . $symfonyBinary . ' ' . implode(' ', $symfonyParams));
 
