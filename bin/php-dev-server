@@ -6,6 +6,10 @@ use C3\PhpDevServer\WebserverInstaller;
 
 set_time_limit(0);
 
+if (empty($_SERVER['HOME']) || !is_readable($_SERVER['HOME'])) {
+    die('$HOME environment variable does not exist or path is not readable');
+}
+
 $autoloaderPath = determineComposerAutoloadPath();
 require $autoloaderPath;
 
@@ -19,11 +23,12 @@ if (!WebserverInstaller::isInstalled()) {
 $configManager = new ConfigManager($composerJson);
 
 $workingDirectory = dirname($composerJsonPath);
-$symfonyBinary = '"${HOME}/.symfony/bin/symfony"';
+$symfonyDirectory = $_SERVER['HOME'] . '/.symfony';
+$symfonyBinary = $symfonyDirectory . '/bin/symfony';
 $symfonyParams = [
     'server:start',
     '--port=' . $configManager->getPort(),
-    '--dir=' . $configManager->getWebDirectory(),
+    '--dir=' . escapeshellarg($configManager->getWebDirectory()),
 ];
 
 if (!$configManager->isTlsEnabled()) {
@@ -33,8 +38,10 @@ if (!$configManager->isTlsEnabled()) {
 if (null !== $configManager->getP12File()) {
     // Handle custom p12 file
     if (0 === strpos($configManager->getP12File(), '/')) {
+        // Absolute path
         $file = new SplFileInfo($configManager->getP12File());
     } else {
+        // Relative to $workingDirectory
         $file = new SplFileInfo($workingDirectory) . '/' . $configManager->getP12File();
     }
 
@@ -42,11 +49,15 @@ if (null !== $configManager->getP12File()) {
         die('Could not read P12 file: ' . $file->getPath());
     }
 
-    // Replace original symfony/cli default.p12
-    passthru('rsync -av ' . escapeshellarg($file->getRealPath()) . ' "${HOME}/.symfony/certs/default.p12"');
+    $currentP12File = $symfonyDirectory . '/certs/default.p12';
+    if (!file_exists($currentP12File) || md5_file($file->getRealPath()) !== md5_file($currentP12File)) {
+        // Replace original symfony/cli default.p12
+        echo 'Copy ' . $file->getRealPath() . ' to ' . $currentP12File;
+        passthru('rsync -aq ' . escapeshellarg($file->getRealPath()) . ' ' . escapeshellarg($currentP12File));
+    }
 }
 
-passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . $symfonyBinary . ' ' . implode(' ', $symfonyParams));
+passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . escapeshellarg($symfonyBinary) . ' ' . implode(' ', $symfonyParams));
 
 /**
  * @return SplFileInfo
