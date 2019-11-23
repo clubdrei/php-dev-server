@@ -6,7 +6,7 @@ use C3\PhpDevServer\WebserverInstaller;
 
 set_time_limit(0);
 
-if (empty($_SERVER['HOME']) || !is_readable($_SERVER['HOME'])) {
+if (empty(getenv('HOME')) || !is_readable(getenv('HOME'))) {
     die('$HOME environment variable does not exist or path is not readable');
 }
 
@@ -23,7 +23,7 @@ if (!WebserverInstaller::isInstalled()) {
 $configManager = new ConfigManager($composerJson);
 
 $workingDirectory = dirname($composerJsonPath);
-$symfonyDirectory = $_SERVER['HOME'] . '/.symfony';
+$symfonyDirectory = rtrim(getenv('HOME'), '/') . '/.symfony';
 $symfonyBinary = $symfonyDirectory . '/bin/symfony';
 $symfonyParams = [
     'server:start',
@@ -36,13 +36,17 @@ if (!$configManager->isTlsEnabled()) {
 }
 
 if (null !== $configManager->getP12File()) {
-    // Handle custom p12 file
-    if (0 === strpos($configManager->getP12File(), '/')) {
+    $path = $configManager->getP12File();
+    if (0 === strpos($path, '~')) {
+        $path = rtrim(getenv('HOME'), '/') . '/' . ltrim(substr($path, 1), '/');
+    }
+
+    if (0 === strpos($path, '/')) {
         // Absolute path
-        $file = new SplFileInfo($configManager->getP12File());
+        $file = new SplFileInfo($path);
     } else {
         // Relative to $workingDirectory
-        $file = new SplFileInfo($workingDirectory) . '/' . $configManager->getP12File();
+        $file = new SplFileInfo($workingDirectory . '/' . $path);
     }
 
     if (!$file->isReadable()) {
@@ -65,15 +69,24 @@ passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . escapeshellarg($sy
  */
 function determineComposerAutoloadPath()
 {
-    $dir = __DIR__;
-    while (!empty($dir) && $dir !== '/') {
-        if (is_readable($dir . '/autoload.php')) {
-            return new SplFileInfo($dir . '/autoload.php');
+    $possibleBasePaths = [];
+
+    if (!empty($_SERVER['PWD'])) {
+        $possibleBasePaths[] = $_SERVER['PWD'];
+    }
+
+    $possibleBasePaths[] = __DIR__;
+
+    foreach ($possibleBasePaths as $possibleBasePath) {
+        while (!empty($possibleBasePath) && $possibleBasePath !== '/') {
+            if (is_readable($possibleBasePath . '/autoload.php')) {
+                return new SplFileInfo($possibleBasePath . '/autoload.php');
+            }
+            if (is_readable($possibleBasePath . '/vendor/autoload.php')) {
+                return new SplFileInfo($possibleBasePath . '/vendor/autoload.php');
+            }
+            $possibleBasePath = dirname($possibleBasePath);
         }
-        if (is_readable($dir . '/vendor/autoload.php')) {
-            return new SplFileInfo($dir . '/vendor/autoload.php');
-        }
-        $dir = dirname($dir);
     }
 
     throw new RuntimeException('autoload.php not found');
