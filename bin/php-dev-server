@@ -23,16 +23,18 @@ if (!WebserverInstaller::isInstalled()) {
 $configManager = new ConfigManager($composerJson);
 
 $workingDirectory = dirname($composerJsonPath);
-$symfonyDirectory = rtrim(getenv('HOME'), '/') . '/.symfony';
+$symfonyDirectory = rtrim(getenv('HOME'), '/') . '/.symfony5';
 $symfonyBinary = $symfonyDirectory . '/bin/symfony';
 $symfonyParams = [
     'server:start',
     '--port=' . $configManager->getPort(),
     '--dir=' . escapeshellarg($configManager->getWebDirectory()),
+    '--allow-all-ip',
 ];
 
-if (!$configManager->isTlsEnabled()) {
-    $symfonyParams[] = '--no-tls';
+// Ensure that "certs" directory exists
+if (!is_dir($symfonyDirectory . '/certs')) {
+    mkdir($symfonyDirectory . '/certs', 0750, false);
 }
 
 if (null !== $configManager->getP12File()) {
@@ -59,6 +61,13 @@ if (null !== $configManager->getP12File()) {
         echo 'Copy ' . $file->getRealPath() . ' to ' . $currentP12File;
         copy($file->getRealPath(), $currentP12File);
     }
+}
+
+if (!$configManager->isTlsEnabled()) {
+    $symfonyParams[] = '--no-tls';
+} elseif (null !== $configManager->getP12File()) {
+    $symfonyParams[] = '--p12';
+    $symfonyParams[] = $symfonyDirectory . '/certs/default.p12';
 }
 
 passthru('cd ' . escapeshellarg($workingDirectory) . ' && ' . escapeshellarg($symfonyBinary) . ' ' . implode(' ', $symfonyParams));
